@@ -45,12 +45,37 @@ class _HomeViewState extends State<HomeView> {
   //推荐列表数据列表
   List<GoodDetailItem> _recommendList = [];
 
+  //搜索结果列表，可为空加？
+  List<GoodDetailItem>? _searchResults;
+  // 搜索内容初始化
+  String _searchKeyword = "";
+
   //函数封装CustomScrollView内容
   List<Widget> _getScrollchildren() {
     return [
       //包裹普通Widget的sliver家族
-      SliverToBoxAdapter(child: HmSlider(BannerList: _BannerList)), //轮播图
-      //需要间隔放SizeBox
+      SliverToBoxAdapter(child: HmSlider(BannerList: _BannerList, onSearch: _handleSearch)), //轮播图.搜索功能
+      // 这个...[]是展开运算符，可以把方括号里的多个 Widget 拆开，直接合并到外层大 List[]。
+      if(_searchKeyword.isNotEmpty) ...[
+        SliverToBoxAdapter(
+        child: Padding(
+          padding: EdgeInsets.all(12),
+          child: Text('“$_searchKeyword”的搜索结果'),
+        ),
+      ),
+      // _searchResult的值可能是null，是则赋值为[]
+      if ((_searchResults ?? []).isEmpty)
+        const SliverToBoxAdapter(
+          child: Padding(
+            padding: EdgeInsets.all(20),
+            child: Text("未找到相关商品"),
+          ),
+        )
+      // 这边就是一个放错处理，防止recommendList是null，因为是null，拿不到任何东西还会报错
+      else
+        HmMoreList(recommendList: _searchResults ?? []),
+      ]else...[
+        //需要间隔放SizeBox
       SliverToBoxAdapter(child: SizedBox(height: 10)),
       //SliverGridView和SliverListView都只能纵向滚动，不能横向
       SliverToBoxAdapter(child: HmCategory(categoryList: _CategoryList)), //分类
@@ -81,7 +106,8 @@ class _HomeViewState extends State<HomeView> {
       SliverToBoxAdapter(child: SizedBox(height: 10)),
       //无限滚动利用SliverGridView就可以实现
       HmMoreList(recommendList: _recommendList),
-    ];
+      ]
+    ];            
   }
 
   //初始化状态
@@ -136,6 +162,23 @@ class _HomeViewState extends State<HomeView> {
     } catch (_) {
       // 首页单块加载失败时，可以静默忽略，或提示用户
     }
+  }
+
+  // 搜索方法定义
+  void _handleSearch(String keyword) {
+    setState(() {
+      _searchKeyword = keyword;
+
+      if (keyword.isEmpty) {
+        _searchResults = null;
+        return;
+      }
+
+      // 借用推荐商品列表做本地过滤：商品名包含关键词就匹配成功
+      _searchResults = _recommendList
+          .where((item) => item.name.contains(keyword))
+          .toList();
+    });
   }
 
   //获取优惠推荐数据

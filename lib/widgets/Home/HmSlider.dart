@@ -4,7 +4,8 @@ import 'package:hm_shop/viewmodels/home.dart';
 
 class HmSlider extends StatefulWidget {
   final List<BannerItem> BannerList;
-  HmSlider({Key? key, required this.BannerList}) : super(key: key);
+  final void Function(String) onSearch; // 定义一个参数为String的回调函数，用于子传父
+  HmSlider({Key? key, required this.BannerList, required this.onSearch}) : super(key: key);
 
   @override
   _HmSliderState createState() => _HmSliderState();
@@ -12,10 +13,12 @@ class HmSlider extends StatefulWidget {
 
 class _HmSliderState extends State<HmSlider> {
   CarouselSliderController _controller = CarouselSliderController(); //控制轮播图跳转的控制器
+  TextEditingController _searchController = TextEditingController(); // 输入框内容控制器
   int _currentIndex = 0; //表示当前激活的导航灯
 
   @override
   void dispose() {
+    _searchController.dispose();// 轮播图属于第三方不用释放，输入框需要
     super.dispose();
   }
 
@@ -49,7 +52,7 @@ class _HmSliderState extends State<HmSlider> {
     );
   }
 
-  //搜索栏的ui实现，目前暂不实现功能
+  //搜索栏的ui实现
   Widget _getSearch() {
     return Positioned(
       top: 10,
@@ -57,19 +60,28 @@ class _HmSliderState extends State<HmSlider> {
       right: 0,
       child: Padding(
         padding: EdgeInsets.all(10),
-        child: Container(
-          alignment: Alignment.centerLeft,
-          padding: EdgeInsets.symmetric(horizontal: 40),
-          decoration: BoxDecoration(
-            color: Colors.grey.withOpacity(0.2),
-            borderRadius: BorderRadius.circular(25),
+        child: TextField(
+          controller: _searchController,// 绑定控制器，获取内容
+          textInputAction: TextInputAction.search,// 将搜索时，将键盘右下角按钮变成搜索按钮，而不是默认的换行 / 完成。
+          style: const TextStyle(color: Colors.white, fontSize: 16),// 设置用户输入文字样式
+          // InputDecoration用于定义输入框文本，样式等组件
+          decoration: InputDecoration(
+            hintText: "输入要搜索的商品",// 提示文字
+            hintStyle: const TextStyle(color: Colors.white70),// 提示文字颜色（半透明）
+            prefixIcon: const Icon(Icons.search, color: Colors.white),// 输入框前置图标Icon自带搜索图标
+            filled: true,// 允许框内颜色出现
+            fillColor: Colors.grey.withOpacity(0.2),// 设置输入框为灰色，透明度 0.2，淡淡的灰色
+            contentPadding: EdgeInsets.zero,// contentPadding输入文字距边框的内边距
+            border: OutlineInputBorder( // 设置输入框样式
+              borderRadius: BorderRadius.circular(25),// 设置输入框为圆角
+              borderSide: BorderSide.none// BorderSide.none去掉边框线条，只保留圆角背景，不显示描边
+            ),
           ),
-          width: double.infinity,
-          height: 50,
-          child: Text(
-            "搜索...",
-            style: TextStyle(color: Colors.white, fontSize: 16),
-          ),
+          // onSubmitted的原理是用户提交一次请求，onSubmitted执行一次里面的逻辑，value就是用户输入的值
+          // 使用widget调用从父组件传来的回调匿名函数将处理好的用户搜索内容传到父组件,让父组件完成搜索
+          onSubmitted: (value) {
+            widget.onSearch(value.trim()); //这里value.trim()的.trim()用于去除输入内容前后空格；
+          },
         ),
       ),
     );
