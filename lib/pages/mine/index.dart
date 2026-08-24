@@ -1,12 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:get/get_core/src/get_main.dart';
-import 'package:get/get_instance/src/extension_instance.dart';
-import 'package:get/state_manager.dart';
-import 'package:hm_shop/api/mine.dart';
-import 'package:hm_shop/stores/TokenManager.dart';
-import 'package:hm_shop/utils/ToastUtils.dart';
-import 'package:hm_shop/viewmodels/home.dart';
-import 'package:hm_shop/viewmodels/user.dart';
+import 'package:get/get.dart';
+import 'package:hm_shop/stores/MineController.dart';
 import 'package:hm_shop/widgets/Home/HmMoreList.dart';
 import 'package:hm_shop/widgets/Mine/HmGuess.dart';
 import 'package:hm_shop/stores/UserController.dart';
@@ -20,7 +14,18 @@ class MineView extends StatefulWidget {
 
 class _MineViewState extends State<MineView> {
   // 无论有几个页面，先把这个共享数据put在这里，谁都可以拿
-  final Usercontroller _userController = Get.find();
+  final UserController _userController = Get.find();
+  // 注册一个GetX管理此页面状态，数据与请求方法这些需要实时更新的东西到MineController里去拿
+  final MineController controller = Get.put(MineController());
+  // 滚动容器控制器
+  final ScrollController _controller = ScrollController();
+  // 释放控制器
+  @override
+  void dispose() {
+    // TODO: implement dispose
+    _controller.dispose();
+    super.dispose();
+  }
 
   // 返回退出登录方法
   Widget _getLogin() {
@@ -40,12 +45,7 @@ class _MineViewState extends State<MineView> {
                       actions: [
                         TextButton(
                           onPressed: () async {
-                            // 确认后，清除Getx数据，删除token
-                            await tokenManager.removeToken(); // 删除持久化token
-                            // 传递空数据集给工厂函数处理，全部赋于null值，更新到Getx数据中，清空Getx数据
-                            _userController.updateUserInfo(
-                              UserInfo.fromJSON({}),
-                            );
+                            await _userController.logout();
                             Navigator.pop(context); // 返回上个页面，取消弹窗
                           },
                           child: Text("确认"),
@@ -257,24 +257,11 @@ class _MineViewState extends State<MineView> {
     );
   }
 
-  // 创建用于接收API转换数据的列表
-  List<GoodDetailItem> _list = [];
-  // 无限列表的请求参数,接口自带的
-  Map<String, dynamic> _params = {"page": 1, "pageSize": 10};
   @override
   void initState() {
     // TODO: implement initState
     super.initState();
-    _getGuessList();
     _registerEvent();
-  }
-
-  // 释放控制器
-  @override
-  void dispose() {
-    // TODO: implement dispose
-    _controller.dispose();
-    super.dispose();
   }
 
   // 滚动距离判断
@@ -285,48 +272,10 @@ class _MineViewState extends State<MineView> {
       if (_controller.position.pixels >=
           (_controller.position.maxScrollExtent - 50)) {
         // 滚动到底触发请求
-        _getGuessList();
+        controller.loadMore();
       }
     });
   }
-
-  // 阀门控制
-  bool _isLoading = false; // 是否有人正在加载
-  bool _harMore = true; // 是否还有下一页
-  void _getGuessList() async {
-    if (_isLoading == true || _harMore == false) {
-      // 有人正在加载或者没有下一页就不请求了
-      return;
-    }
-    try {
-      _isLoading = true; // 占住位置
-      final res = await getGuessListAPI(_params);
-      _list.addAll(res.items); // 把内容追加到尾部
-      // _list = res.items; // 这里不能赋值
-      setState(() {});
-      // 这个接口里有一个参数pages，res.pages表示数据一共有多少页
-      // 当请求的页面数大于等于总页面数就表示没有下一页
-      if (_params["page"] >= res.pages) {
-        _harMore = false;
-        return;
-      }
-      _params["page"]++; // 针对页码进行++
-    } catch (_) {
-      if (mounted) {
-        Toastutils.showToast(context, "加载失败，请稍后重试");
-      }
-    } finally {
-      _isLoading = false; // 解放位置
-    }
-
-    // 页面还存在，ui在构建才给刷新页面
-    if (mounted) {
-      setState(() {});
-    }
-  }
-
-  // 滚动容器控制器
-  final ScrollController _controller = ScrollController();
 
   @override
   Widget build(BuildContext context) {
@@ -341,7 +290,9 @@ class _MineViewState extends State<MineView> {
         // pinned 表示吸住的意思
         SliverPersistentHeader(delegate: HmGuess(), pinned: true),
         // 猜你喜欢
-        HmMoreList(recommendList: _list), // 上拉加载
+        Obx(
+          () => HmMoreList(recommendList: controller.guessList.value),
+        ), // 上拉加载
       ],
     );
   }

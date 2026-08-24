@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:hm_shop/api/user.dart';
 import 'package:hm_shop/pages/Cart/index.dart';
 import 'package:hm_shop/pages/Category/index.dart';
 import 'package:hm_shop/pages/Home/index.dart';
 import 'package:hm_shop/pages/mine/index.dart';
-import 'package:hm_shop/stores/TokenManager.dart';
 import 'package:hm_shop/stores/UserController.dart';
 
 class MainPage extends StatefulWidget {
@@ -68,21 +66,11 @@ class _MainPageState extends State<MainPage> {
 
   @override
   void initState() {
-    // TODO: implement initState
     super.initState();
-    // 初始化用户
-    _initUser();
+    _usercontroller.loadUserInfo();
   }
 
-  final Usercontroller _usercontroller = Get.put(Usercontroller());
-  _initUser() async {
-    // 原步骤的初始化await tokenManager.init()已经放在最前面，runApp之前，先读取token在运行整体。
-    // token 已经在 main() 里初始化过了，这里直接读取
-    if (tokenManager.getToken().isNotEmpty) {
-      // 如果token有值则获取用户信息赋值给Getx
-      _usercontroller.updateUserInfo(await getuserinfoAPI());
-    }
-  }
+  final UserController _usercontroller = Get.put(UserController());
 
   @override
   Widget build(BuildContext context) {

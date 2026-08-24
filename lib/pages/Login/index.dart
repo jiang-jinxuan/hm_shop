@@ -1,8 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:hm_shop/api/user.dart';
-import 'package:hm_shop/stores/TokenManager.dart';
 import 'package:hm_shop/utils/Toastutils.dart';
 import 'package:hm_shop/stores/UserController.dart';
 import 'package:hm_shop/utils/loginDialog.dart';
@@ -17,7 +15,7 @@ class LoginPage extends StatefulWidget {
 class _LoginPageState extends State<LoginPage> {
   TextEditingController _phonController = TextEditingController(); // 账号控制器
   TextEditingController _codeController = TextEditingController(); // 密码控制器
-  final Usercontroller _userController = Get.find(); // 寻找对象
+  final UserController _userController = Get.find(); // 寻找对象
 
   // 释放一下控制器
   @override
@@ -91,14 +89,10 @@ class _LoginPageState extends State<LoginPage> {
     try {
       // 登录进度动画启动
       LoginDialog.show(context, message: "努力登录中");
-      final res = await loginAPI({
-        "account": _phonController.text, // 控制器获取数据的账号文本部分
-        "password": _codeController.text, // 密码文本部分
-      });
-      // res // res就是用户信息合集
-      _userController.updateUserInfo(res);
-      // 登录成功后写入持久化
-      tokenManager.setToken(res.token);
+      await _userController.login(
+        _phonController.text,
+        _codeController.text,
+      );
       LoginDialog.hide(context); // 登录成功关闭进度动画
       Toastutils.showToast(context, "登录成功"); // 提示登录成功信息
       Navigator.pop(context); // 返回上个页面
